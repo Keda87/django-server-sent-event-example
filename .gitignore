@@ -1,0 +1,6 @@
+venv
+.idea
+src/media
+.vscode
+*.pyc
+*.sqlite3

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@adiyatmubarak</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.8.2/css/bulma.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+<body>
+<section class="section">
+    <div class="container">
+        <div class="tabs is-boxed is-medium">
+            <ul>
+                <li class="is-active tab-listener" id="submit-form"><a>Submit</a></li>
+                <li class="tab-listener" id="result"><a>Download Status</a></li>
+            </ul>
+        </div>
+
+        <div class="columns">
+            <div class="column" id="content-submit-form">
+                <div class="field">
+                    <label class="label">YouTube URL</label>
+                    {% csrf_token %}
+                    <div class="control">
+                        {{ form.url }}
+                    </div>
+                </div>
+                <div class="field">
+                    <div class="control">
+                        <button class="button is-link" id="submit">Download</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="column is-hidden" id="content-result">
+                <div class="table-container">
+                    <table class="table">
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+
+<script type="text/javascript">
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const ready = (callback) => {
+        if (document.readyState !== "loading") callback();
+        else document.addEventListener("DOMContentLoaded", callback);
+    }
+
+    ready(() => {
+        const csrftoken = getCookie('csrftoken')
+        const xhr = new XMLHttpRequest()
+        const source = new EventSource('monitor/')
+        source.onmessage = (event) => {
+            document.querySelectorAll('tr').forEach((elem) => elem.style.display = 'none')
+
+            let results = JSON.parse(event.data)
+            results = results.map(result => `
+                <tr>
+                    <td>
+                        <a href="${result.youtube_url}" target="_blank">${result.youtube_url}</a>
+                    </td>
+                    <td>${result.status}</td>
+                    <td>
+                        <a href="${result.url}" target="_blank">${ result.url ? 'Download' : ''}</a>
+                    </td>
+                <tr>`)
+
+            document.querySelector('.table').innerHTML = results.join('')
+        }
+
+        document.querySelector('button#submit').addEventListener('click', (e) => {
+            e.preventDefault()
+            const url = document.querySelector('#id_url').value
+
+            xhr.open('POST', 'submit/')
+            xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8')
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest')
+            xhr.setRequestHeader('X-CSRFToken', csrftoken)
+            xhr.onload = () => {
+                const data = JSON.parse(xhr.responseText)
+                if (xhr.readyState === 4 && xhr.status >= 200 && xhr.status < 300) {
+                    document.querySelector('#id_url').value = ''
+                } else {
+                    console.error(data)
+                }
+            }
+            xhr.send(JSON.stringify({ url }))
+        })
+
+        document.querySelectorAll('.tab-listener')
+            .forEach(elem => elem.addEventListener('click', (e) => {
+                e.preventDefault()
+
+                const previousActiveTab = document.querySelector('.is-active')
+                const previousId = previousActiveTab.attributes[1].nodeValue
+                const previousContent = document.querySelector(`#content-${previousId}`)
+                previousActiveTab.classList.remove('is-active')
+                previousContent.classList.add('is-hidden')
+
+                const currentId = e.currentTarget.attributes[1].nodeValue
+                const currentTab = document.querySelector(`#${currentId}`)
+                const currentContent = document.querySelector(`#content-${currentId}`)
+                currentTab.classList.add('is-active')
+                currentContent.classList.remove('is-hidden')
+            }))
+    });
+
+</script>
+</html>
