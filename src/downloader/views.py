@@ -41,7 +41,7 @@ def submit_download_view(request: HttpRequest):
     return HttpResponseNotAllowed(["POST"])
 
 
-def monitor_view(request):
+def monitor_view(request: HttpRequest):
     def pooling_status():
         while True:
             time.sleep(1)
